@@ -5,3 +5,5 @@
 .gitignore
 Makefile
 docs
+test
+test-third_party

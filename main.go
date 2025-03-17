@@ -6,12 +6,9 @@ import (
 	"log"
 	"net/http"
 	"one-api/common"
-	"one-api/constant"
-	"one-api/controller"
 	"one-api/middleware"
 	"one-api/model"
 	"one-api/router"
-	"one-api/service"
 	"os"
 	"strconv"
 
@@ -69,54 +66,58 @@ func main() {
 		common.FatalLog("failed to initialize Redis: " + err.Error())
 	}
 
-	// Initialize constants
-	constant.InitEnv()
-	// Initialize options
-	model.InitOptionMap()
-	if common.RedisEnabled {
-		// for compatibility with old versions
-		common.MemoryCacheEnabled = true
-	}
-	if common.MemoryCacheEnabled {
-		common.SysLog("memory cache enabled")
-		common.SysError(fmt.Sprintf("sync frequency: %d seconds", common.SyncFrequency))
-		model.InitChannelCache()
-	}
-	if common.MemoryCacheEnabled {
-		go model.SyncOptions(common.SyncFrequency)
-		go model.SyncChannelCache(common.SyncFrequency)
-	}
+	// Initialize SuperTokens
+	model.InitSuperTokens()
+
+	//// Initialize constants
+	//constant.InitEnv()
+	//// Initialize options
+	//model.InitOptionMap()
+
+	//if common.RedisEnabled {
+	//	// for compatibility with old versions
+	//	common.MemoryCacheEnabled = true
+	//}
+	//if common.MemoryCacheEnabled {
+	//	common.SysLog("memory cache enabled")
+	//	common.SysError(fmt.Sprintf("sync frequency: %d seconds", common.SyncFrequency))
+	//	model.InitChannelCache()
+	//}
+	//if common.MemoryCacheEnabled {
+	//	go model.SyncOptions(common.SyncFrequency)
+	//	go model.SyncChannelCache(common.SyncFrequency)
+	//}
 
 	// 数据看板
-	go model.UpdateQuotaData()
+	//go model.UpdateQuotaData()
 
-	if os.Getenv("CHANNEL_UPDATE_FREQUENCY") != "" {
-		frequency, err := strconv.Atoi(os.Getenv("CHANNEL_UPDATE_FREQUENCY"))
-		if err != nil {
-			common.FatalLog("failed to parse CHANNEL_UPDATE_FREQUENCY: " + err.Error())
-		}
-		go controller.AutomaticallyUpdateChannels(frequency)
-	}
-	if os.Getenv("CHANNEL_TEST_FREQUENCY") != "" {
-		frequency, err := strconv.Atoi(os.Getenv("CHANNEL_TEST_FREQUENCY"))
-		if err != nil {
-			common.FatalLog("failed to parse CHANNEL_TEST_FREQUENCY: " + err.Error())
-		}
-		go controller.AutomaticallyTestChannels(frequency)
-	}
-	if common.IsMasterNode && constant.UpdateTask {
-		gopool.Go(func() {
-			controller.UpdateMidjourneyTaskBulk()
-		})
-		gopool.Go(func() {
-			controller.UpdateTaskBulk()
-		})
-	}
-	if os.Getenv("BATCH_UPDATE_ENABLED") == "true" {
-		common.BatchUpdateEnabled = true
-		common.SysLog("batch update enabled with interval " + strconv.Itoa(common.BatchUpdateInterval) + "s")
-		model.InitBatchUpdater()
-	}
+	//if os.Getenv("CHANNEL_UPDATE_FREQUENCY") != "" {
+	//	frequency, err := strconv.Atoi(os.Getenv("CHANNEL_UPDATE_FREQUENCY"))
+	//	if err != nil {
+	//		common.FatalLog("failed to parse CHANNEL_UPDATE_FREQUENCY: " + err.Error())
+	//	}
+	//	go controller.AutomaticallyUpdateChannels(frequency)
+	//}
+	//if os.Getenv("CHANNEL_TEST_FREQUENCY") != "" {
+	//	frequency, err := strconv.Atoi(os.Getenv("CHANNEL_TEST_FREQUENCY"))
+	//	if err != nil {
+	//		common.FatalLog("failed to parse CHANNEL_TEST_FREQUENCY: " + err.Error())
+	//	}
+	//	go controller.AutomaticallyTestChannels(frequency)
+	//}
+	//if common.IsMasterNode && constant.UpdateTask {
+	//	gopool.Go(func() {
+	//		controller.UpdateMidjourneyTaskBulk()
+	//	})
+	//	gopool.Go(func() {
+	//		controller.UpdateTaskBulk()
+	//	})
+	//}
+	//if os.Getenv("BATCH_UPDATE_ENABLED") == "true" {
+	//	common.BatchUpdateEnabled = true
+	//	common.SysLog("batch update enabled with interval " + strconv.Itoa(common.BatchUpdateInterval) + "s")
+	//	model.InitBatchUpdater()
+	//}
 
 	if os.Getenv("ENABLE_PPROF") == "true" {
 		gopool.Go(func() {
@@ -126,7 +127,7 @@ func main() {
 		common.SysLog("pprof enabled")
 	}
 
-	service.InitTokenEncoders()
+	//service.InitTokenEncoders()
 
 	// Initialize HTTP server
 	server := gin.New()
@@ -139,6 +140,7 @@ func main() {
 			},
 		})
 	}))
+
 	// This will cause SSE not to work!!!
 	//server.Use(gzip.Gzip(gzip.DefaultCompression))
 	server.Use(middleware.RequestId())
@@ -153,6 +155,9 @@ func main() {
 		SameSite: http.SameSiteStrictMode,
 	})
 	server.Use(sessions.Sessions("session", store))
+
+	// Initialize SuperTokens middleware and CORS
+	middleware.SetSuperTokensCors(server)
 
 	router.SetRouter(server, buildFS, indexPage)
 	var port = os.Getenv("PORT")
