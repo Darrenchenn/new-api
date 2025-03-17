@@ -2,7 +2,6 @@ package main
 
 import (
 	"embed"
-	"fmt"
 	"log"
 	"net/http"
 	"one-api/common"
@@ -13,8 +12,7 @@ import (
 	"strconv"
 
 	"github.com/bytedance/gopkg/util/gopool"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
+
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
@@ -131,30 +129,22 @@ func main() {
 
 	// Initialize HTTP server
 	server := gin.New()
-	server.Use(gin.CustomRecovery(func(c *gin.Context, err any) {
-		common.SysError(fmt.Sprintf("panic detected: %v", err))
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": gin.H{
-				"message": fmt.Sprintf("Panic detected, error: %v. Please submit a issue here: https://github.com/Calcium-Ion/new-api", err),
-				"type":    "new_api_panic",
-			},
-		})
-	}))
+	middleware.CustomRecovery(server)
 
 	// This will cause SSE not to work!!!
 	//server.Use(gzip.Gzip(gzip.DefaultCompression))
 	server.Use(middleware.RequestId())
 	middleware.SetUpLogger(server)
-	// Initialize session store
-	store := cookie.NewStore([]byte(common.SessionSecret))
-	store.Options(sessions.Options{
-		Path:     "/",
-		MaxAge:   2592000, // 30 days
-		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteStrictMode,
-	})
-	server.Use(sessions.Sessions("session", store))
+	//// Initialize session store
+	//store := cookie.NewStore([]byte(common.SessionSecret))
+	//store.Options(sessions.Options{
+	//	Path:     "/",
+	//	MaxAge:   2592000, // 30 days
+	//	HttpOnly: true,
+	//	Secure:   false,
+	//	SameSite: http.SameSiteStrictMode,
+	//})
+	//server.Use(sessions.Sessions("session", store))
 
 	// Initialize SuperTokens middleware and CORS
 	middleware.SetSuperTokensCors(server)
