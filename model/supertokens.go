@@ -1,12 +1,20 @@
 package model
 
 import (
+	"one-api/common"
+
 	"github.com/supertokens/supertokens-golang/recipe/emailpassword"
 	"github.com/supertokens/supertokens-golang/recipe/session"
 	"github.com/supertokens/supertokens-golang/recipe/thirdparty"
 	"github.com/supertokens/supertokens-golang/recipe/thirdparty/tpmodels"
+	"github.com/supertokens/supertokens-golang/recipe/usermetadata"
 	"github.com/supertokens/supertokens-golang/supertokens"
 )
+
+type UserSuperTokens struct {
+	Id   string                 `json:"id"`
+	Info map[string]interface{} `json:"info"`
+}
 
 func InitSuperTokens() {
 	apiBasePath := "/auth"
@@ -27,6 +35,7 @@ func InitSuperTokens() {
 			WebsiteBasePath: &websiteBasePath,
 		},
 		RecipeList: []supertokens.Recipe{
+			usermetadata.Init(nil),
 			emailpassword.Init(nil),
 			session.Init(nil),
 			thirdparty.Init(&tpmodels.TypeInput{
@@ -80,4 +89,27 @@ func InitSuperTokens() {
 	if err != nil {
 		panic(err.Error())
 	}
+}
+
+func UserMetadataUpdate(userId string) error {
+	return nil
+}
+
+func UserMetadataGet(userId string) (*UserSuperTokens, error) {
+	metadata, err := usermetadata.GetUserMetadata(userId)
+	if err != nil {
+		common.SysError("failed to get user metadata: " + err.Error())
+		return nil, err
+	}
+
+	//exampleValue := metadata["exampleKey"]
+
+	return &UserSuperTokens{
+		Id:   userId,
+		Info: metadata,
+	}, err
+}
+
+func UserMetadataDelete() {
+
 }
